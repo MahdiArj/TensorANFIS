@@ -1,0 +1,78 @@
+
+@author: Mahdi Arjmandazar
+"""
+import time
+import tensorflow as tf
+#import tensorflow.compat.v1 as tf
+#tf.disable_v2_behavior()
+import numpy as np
+import matplotlib.pyplot as plt
+from anfis import ANFIS
+
+inp_array=[[45,60],[30,90],[0,60],[60,30],[45,90],[60,90],[0,90]]
+#inp_array=[[1,2],[5,1],[1,4],[7,6],[4,8],[7,14],[9,5],[7,7],[9,8],[4,3]]
+inp=np.array(inp_array)
+lbls_array=[1.2071,0.5000,0.5000,1.7321,0.7071,0.8660,0.0000]
+#lbls_array=[3,6,5,13,12,21,14,14,17,7]
+lbls_real=np.array(lbls_array)
+data = (inp - inp.mean(axis=0)) / inp.std(axis=0)
+lbls=(lbls_real-lbls_real.mean(axis=0))/lbls_real.std(axis=0) #for normalization purposes
+trnData = data[:lbls.size - round(lbls.size * 0.3), :]
+trnLbls = lbls[:lbls.size - round(lbls.size * 0.3)]
+chkData = data[lbls.size - round(lbls.size * 0.3):, :]
+chkLbls = lbls[lbls.size - round(lbls.size * 0.3):]
+
+# ANFIS params and Tensorflow graph initialization
+m = 16 # number of rules
+alpha = 0.01  # learning rate
+
+fis = ANFIS(n_inputs=2, n_rules=m, learning_rate=alpha)
+
+# Training
+num_epochs =100
+
+# Initialize session to make computations on the Tensorflow graph
+
+with tf.Session() as sess:
+    # Initialize model parameters
+    #sess.run(tf.global_variables_initializer())
+    sess.run(fis.init_variables)
+    trn_costs = []
+    val_costs = []
+    time_start = time.time()
+    for epoch in range(num_epochs):
+        #  Run an update step
+        trn_loss, trn_pred = fis.train(sess, trnData, trnLbls)
+        
+        # Evaluate on validation set
+        val_pred_loss, path = fis.infer(sess, epoch, num_epochs, chkData, chkLbls)
+        val_pred = val_pred_loss[0]
+        val_loss = val_pred_loss[1]
+        if epoch % 10 == 0:
+            print("Train cost after epoch %i: %f" % (epoch, trn_loss))
+        if epoch == num_epochs - 1:
+            time_end = time.time()
+            print("Elapsed time: %f" % (time_end - time_start))
+            print("Validation loss: %f" % val_loss)
+                    # Plot real vs. predicted
+            pred = np.vstack((np.expand_dims(trn_pred, 1), np.expand_dims(val_pred, 1)))
+            plt.figure(1)
+            plt.plot(lbls)
+            plt.plot(pred)
+        trn_costs.append(trn_loss)
+        val_costs.append(val_loss)
+    
+    # Plot the cost over epochs
+    plt.figure(2)
+    plt.subplot(2, 1, 1)
+    plt.plot(np.squeeze(trn_costs))
+    plt.title("Training loss, Learning rate =" + str(alpha))
+    plt.subplot(2, 1, 2)
+    plt.plot(np.squeeze(val_costs))
+    plt.title("Validation loss, Learning rate =" + str(alpha))
+    plt.ylabel('Cost')
+    plt.xlabel('Epochs')
+    
+    # Plot resulting membership functions
+    fis.plotmfs(sess)
+    plt.show()
