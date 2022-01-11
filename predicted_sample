@@ -1,0 +1,19 @@
+@author: Mahdi Arjomandazar
+"""
+import numpy as np
+from anfis import ANFIS
+
+inp_array=[[45,60],[30,90],[0,60],[60,30],[45,90],[60,90],[0,90]]
+inp=np.array(inp_array)
+lbls_array=[1.2071,0.5000,0.5000,1.7321,0.7071,0.8660,0.0000]
+lbls_real=np.array(lbls_array)
+data = (inp - inp.mean(axis=0)) / inp.std(axis=0)
+lbls=(lbls_real-lbls_real.mean(axis=0))/lbls_real.std(axis=0)
+chkData = data[lbls.size - round(lbls.size * 0.3):, :]
+chkLbls = lbls[lbls.size - round(lbls.size * 0.3):]
+
+# ANFIS params and Tensorflow graph initialization
+alpha = 0.01  # learning rate
+fis = ANFIS(n_inputs=2, n_rules=16, learning_rate=alpha)
+predicted = fis.predict(chkData)
+print(predicted)
